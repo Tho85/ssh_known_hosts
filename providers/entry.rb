@@ -27,7 +27,7 @@ action :create do
   key = (new_resource.key || `ssh-keyscan -H -t#{node['ssh_known_hosts']['key_type']} -p #{new_resource.port} #{new_resource.host}`)
   comment = key.split("\n").first || ""
 
-  if key_exists?(key, comment)
+  if key_exists?(new_resource.host, key, comment)
     Chef::Log.debug "Known hosts key for #{new_resource.name} already exists - skipping"
   else
     new_keys = (keys + [key]).uniq.sort
@@ -57,8 +57,8 @@ private
     ::File.exists?(node['ssh_known_hosts']['file'])
   end
 
-  def key_exists?(key, comment)
-    keys.any? do |line|
-      line.match(/#{Regexp.escape(comment)}|#{Regexp.escape(key)}/)
-    end
+  def key_exists?(host, key, comment)
+    real_key = key.split(' ').last
+    existing_keys = `ssh-keygen -H -F #{host} -f #{node['ssh_known_hosts']['file']}`
+    existing_keys.match(/#{Regexp.escape(comment)}|#{Regexp.escape(real_key)}/)
   end
